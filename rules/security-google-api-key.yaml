@@ -1,0 +1,25 @@
+id: SEC-003
+name: Google Maps / Cloud API Key
+type: security
+severity: high
+language: "*"
+analyzer: regex
+pattern: "(AIza[0-9A-Za-z\\-_]{35})"
+message: "Google API key detected"
+title: "Google API Key Exposed"
+description: "A Google Maps or Cloud API key was found hardcoded. These keys can incur billing charges and access Google services."
+redact: true
+recommendations:
+  - "Restrict the API key to specific APIs and IP addresses in the Google Cloud Console"
+  - "Move the key to a secrets manager"
+  - "Rotate the exposed key"
+references:
+  - "https://cloud.google.com/docs/authentication/api-keys"
+tags:
+  - google
+  - api-key
+  - credentials
+conditions:
+  exclude_paths:
+    - "node_modules/"
+    - ".git/"

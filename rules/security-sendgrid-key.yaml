@@ -1,0 +1,23 @@
+id: SEC-006
+name: SendGrid API Key
+type: security
+severity: high
+language: "*"
+analyzer: regex
+pattern: "(SG\\.[a-zA-Z0-9\\-_]{22,}\\.[a-zA-Z0-9\\-_]{43,})"
+message: "SendGrid API key detected"
+title: "SendGrid API Key Exposed"
+description: "A SendGrid API key was found hardcoded. This key can be used to send emails on behalf of your SendGrid account."
+redact: true
+recommendations:
+  - "Revoke the key in the SendGrid dashboard"
+  - "Use restricted API keys with only required permissions"
+  - "Store the key in a secrets manager"
+tags:
+  - sendgrid
+  - email
+  - credentials
+conditions:
+  exclude_paths:
+    - "node_modules/"
+    - ".git/"

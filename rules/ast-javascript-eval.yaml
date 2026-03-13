@@ -1,0 +1,28 @@
+id: AST-JS-001
+name: Dangerous eval() in JavaScript
+type: security
+severity: critical
+language: javascript
+analyzer: ast
+pattern: "call:eval"
+message: "Dangerous use of eval() detected — executes arbitrary JavaScript"
+title: "JavaScript eval() Usage"
+description: "eval() executes a string as JavaScript code. This is an XSS and remote code execution risk in both browser and Node.js environments."
+redact: false
+recommendations:
+  - "Replace eval() with JSON.parse() for data, or a safer parsing library"
+  - "Use Function() constructor only if absolutely necessary, and sanitize inputs"
+  - "Enable Content Security Policy (CSP) to block eval() in browsers"
+references:
+  - "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/eval#never_use_eval!"
+tags:
+  - javascript
+  - code-execution
+  - xss
+conditions:
+  exclude_paths:
+    - "node_modules/"
+    - ".git/"
+    - "test/"
+    - "tests/"
+    - "__tests__/"

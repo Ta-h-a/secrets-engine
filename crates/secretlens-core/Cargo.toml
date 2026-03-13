@@ -1,0 +1,12 @@
+[package]
+name = "secretlens-core"
+version = "1.0.0"
+edition = "2021"
+description = "Core types, protocol models, and traits for SecretLens"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+thiserror = { workspace = true }

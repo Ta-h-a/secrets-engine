@@ -1,0 +1,150 @@
+#!/usr/bin/env bash
+# SecretLens pre-commit hook
+#
+# Installation:
+#   cp hooks/pre-commit .git/hooks/pre-commit
+#   chmod +x .git/hooks/pre-commit
+#
+# Or with pre-commit framework (https://pre-commit.com):
+#   See .pre-commit-hooks.yaml in this repository.
+#
+# Behavior:
+#   - Collects all staged files
+#   - Sends them to secretlens in pipe mode via JSON stdin/stdout protocol
+#   - Exits 1 (blocking commit) if any findings with severity >= high are present
+#   - Exits 0 (allowing commit) if no high/critical findings
+
+set -euo pipefail
+
+# ── Locate the secretlens binary ─────────────────────────────────────────────
+# Look relative to this hook file first (works when hook is at .git/hooks/pre-commit
+# and the binary is at the repo root's target/release/ or a PATH install).
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+find_binary() {
+    # 1. Relative to git root
+    local git_root
+    git_root="$(git rev-parse --show-toplevel 2>/dev/null || echo "")"
+    if [[ -n "$git_root" ]]; then
+        local candidates=(
+            "$git_root/target/release/secretlens"
+            "$git_root/target/debug/secretlens"
+            "$git_root/secretlens"
+        )
+        for c in "${candidates[@]}"; do
+            if [[ -x "$c" ]]; then
+                echo "$c"
+                return
+            fi
+        done
+    fi
+
+    # 2. On PATH
+    if command -v secretlens &>/dev/null; then
+        echo "secretlens"
+        return
+    fi
+
+    echo ""
+}
+
+SECRETLENS_BIN="$(find_binary)"
+
+if [[ -z "$SECRETLENS_BIN" ]]; then
+    echo "secretlens: binary not found — skipping secret scan" >&2
+    echo "  Install with: cargo install --path . --bin secretlens" >&2
+    exit 0
+fi
+
+# ── Collect staged files ──────────────────────────────────────────────────────
+
+STAGED_FILES=()
+while IFS= read -r -d '' file; do
+    STAGED_FILES+=("$file")
+done < <(git diff --cached --name-only --diff-filter=ACM -z)
+
+if [[ ${#STAGED_FILES[@]} -eq 0 ]]; then
+    exit 0
+fi
+
+# ── Build JSON payload ────────────────────────────────────────────────────────
+# Use Python to construct valid JSON with proper escaping
+
+PAYLOAD=$(python3 - "${STAGED_FILES[@]}" <<'EOF'
+import sys
+import json
+
+files = []
+for path in sys.argv[1:]:
+    try:
+        with open(path, 'r', encoding='utf-8', errors='replace') as f:
+            content = f.read()
+        files.append({"filePath": path, "content": content})
+    except OSError:
+        pass  # Binary or unreadable file — skip
+
+request = {
+    "command": "analyze",
+    "payload": {
+        "files": files,
+        "aiProviderConfig": {"provider": "none"}
+    }
+}
+print(json.dumps(request))
+EOF
+)
+
+# ── Run analysis ──────────────────────────────────────────────────────────────
+
+RESPONSE=$(echo "$PAYLOAD" | "$SECRETLENS_BIN" --mode pipe --format json 2>/dev/null)
+
+if [[ -z "$RESPONSE" ]]; then
+    echo "secretlens: no response from engine — skipping" >&2
+    exit 0
+fi
+
+# ── Parse findings and exit code ──────────────────────────────────────────────
+# Extract high/critical findings count using Python
+
+FINDING_COUNT=$(python3 - "$RESPONSE" <<'EOF'
+import sys
+import json
+
+response_str = sys.argv[1]
+try:
+    response = json.loads(response_str)
+except json.JSONDecodeError:
+    sys.exit(0)
+
+if response.get("status") != "success":
+    msg = response.get("payload", {}).get("errorMessage", "unknown error")
+    print(f"secretlens engine error: {msg}", file=sys.stderr)
+    sys.exit(0)
+
+findings = response.get("payload", {}).get("findings", [])
+blocking = [f for f in findings if f.get("severity") in ("Critical", "High", "critical", "high")]
+
+if blocking:
+    print(f"\n🔴 SecretLens blocked this commit: {len(blocking)} high/critical finding(s)\n")
+    for f in blocking:
+        print(f"  [{f.get('severity','?')}] {f.get('ruleId','?')} — {f.get('filePath','?')}:{f.get('lineNumber','?')}")
+        print(f"  {f.get('message','')}\n")
+    print("Fix the issues above, then re-commit.")
+    print(f"Total findings: {len(findings)}")
+    sys.exit(len(blocking))
+
+if findings:
+    print(f"secretlens: {len(findings)} low/medium finding(s) — commit allowed (review recommended)")
+
+sys.exit(0)
+EOF
+)
+
+EXIT_CODE=$?
+
+if [[ $EXIT_CODE -ne 0 ]]; then
+    exit 1
+fi
+
+exit 0

@@ -1,0 +1,23 @@
+[package]
+name = "secretlens-pipeline"
+version = "1.0.0"
+edition = "2021"
+description = "Analysis pipeline orchestration, redaction, and deduplication"
+
+[dependencies]
+secretlens-core = { path = "../secretlens-core" }
+secretlens-rules = { path = "../secretlens-rules" }
+secretlens-analyzers = { path = "../secretlens-analyzers" }
+secretlens-ai = { path = "../secretlens-ai" }
+
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+rayon = { workspace = true }
+regex = { workspace = true }
+once_cell = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }
+sha2 = { workspace = true }

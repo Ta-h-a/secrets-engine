@@ -1,0 +1,17 @@
+[package]
+name = "secretlens-ai"
+version = "1.0.0"
+edition = "2021"
+description = "AI provider trait and implementations (local Ollama, cloud, null)"
+
+[dependencies]
+secretlens-core = { path = "../secretlens-core" }
+
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+reqwest = { workspace = true }
+async-trait = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }

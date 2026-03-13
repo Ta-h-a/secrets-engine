@@ -1,0 +1,25 @@
+id: SEC-005
+name: Stripe Live Secret Key
+type: security
+severity: critical
+language: "*"
+analyzer: regex
+pattern: "(sk_live_[0-9a-zA-Z]{24,})"
+message: "Stripe live secret key detected"
+title: "Stripe Live Secret Key Exposed"
+description: "A Stripe live secret key was found hardcoded. This key provides full access to the Stripe account including charges, refunds, and payouts."
+redact: true
+recommendations:
+  - "Revoke the key immediately in the Stripe Dashboard"
+  - "Generate a new restricted key with only required permissions"
+  - "Store the key in a secrets manager"
+references:
+  - "https://stripe.com/docs/keys"
+tags:
+  - stripe
+  - payment
+  - credentials
+conditions:
+  exclude_paths:
+    - "node_modules/"
+    - ".git/"

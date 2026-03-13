@@ -1,0 +1,28 @@
+id: SEC-001
+name: Hardcoded AWS Access Key
+type: security
+severity: critical
+language: "*"
+analyzer: regex
+pattern: "(AKIA[0-9A-Z]{16})"
+message: "Hardcoded AWS access key detected"
+title: "AWS Access Key Exposed"
+description: "An AWS IAM access key ID was found hardcoded in source code. This key can be used to access AWS services and resources."
+redact: true
+recommendations:
+  - "Remove the hardcoded key immediately"
+  - "Rotate the compromised key via IAM or the code-guard rotation engine"
+  - "Store the key in AWS Secrets Manager or environment variables"
+  - "Use IAM roles instead of long-term access keys where possible"
+references:
+  - "https://docs.aws.amazon.com/general/latest/gr/aws-access-keys-best-practices.html"
+tags:
+  - aws
+  - credentials
+  - iam
+conditions:
+  exclude_paths:
+    - "node_modules/"
+    - "vendor/"
+    - ".git/"
+    - ".terraform/"

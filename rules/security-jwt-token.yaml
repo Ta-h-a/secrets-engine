@@ -1,0 +1,26 @@
+id: SEC-014
+name: JWT Token in Code
+type: security
+severity: medium
+language: "*"
+analyzer: regex
+pattern: "(eyJ[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,})"
+message: "Hardcoded JWT token detected"
+title: "JWT Token Exposed"
+description: "A JWT token was found hardcoded in source code. If this is a long-lived token, it should be stored securely and not committed."
+redact: true
+recommendations:
+  - "Never hardcode JWT tokens — they are credentials"
+  - "Revoke the token if it is a service account or long-lived token"
+  - "Generate tokens dynamically at runtime"
+tags:
+  - jwt
+  - token
+  - credentials
+conditions:
+  exclude_paths:
+    - "node_modules/"
+    - ".git/"
+    - "test/"
+    - "tests/"
+    - "spec/"

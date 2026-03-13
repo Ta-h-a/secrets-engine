@@ -1,0 +1,100 @@
+[workspace]
+members = [
+    ".",
+    "crates/secretlens-core",
+    "crates/secretlens-rules",
+    "crates/secretlens-analyzers",
+    "crates/secretlens-pipeline",
+    "crates/secretlens-ai",
+    "crates/secretlens-http",
+]
+resolver = "2"
+
+[workspace.dependencies]
+# Async runtime
+tokio = { version = "1.36", features = ["full"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+
+# HTTP
+axum = { version = "0.7", features = ["json", "macros"] }
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+
+# Regex
+regex = "1.10"
+
+# Parallelism
+rayon = "1.9"
+
+# Concurrency primitives
+dashmap = "5.5"
+once_cell = "1.19"
+
+# CLI
+clap = { version = "4.5", features = ["derive", "env"] }
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Logging / tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tracing-appender = "0.2"
+
+# UUID
+uuid = { version = "1.7", features = ["v4", "serde"] }
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Async trait
+async-trait = "0.1"
+
+# JS/TS AST parser (oxc — fastest Rust JS parser)
+oxc_allocator = "0.29"
+oxc_parser = "0.29"
+oxc_ast = "0.29"
+oxc_span = "0.29"
+
+# SHA2 for hashing
+sha2 = "0.10"
+
+[package]
+name = "secretlens"
+version = "1.0.0"
+edition = "2021"
+description = "SecretLens — high-performance secret detection engine (Rust)"
+authors = ["SecretLens Team"]
+
+[[bin]]
+name = "secretlens"
+path = "src/main.rs"
+
+[dependencies]
+secretlens-core = { path = "crates/secretlens-core" }
+secretlens-rules = { path = "crates/secretlens-rules" }
+secretlens-analyzers = { path = "crates/secretlens-analyzers" }
+secretlens-pipeline = { path = "crates/secretlens-pipeline" }
+secretlens-ai = { path = "crates/secretlens-ai" }
+secretlens-http = { path = "crates/secretlens-http" }
+
+tokio = { workspace = true }
+serde_json = { workspace = true }
+clap = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tracing-appender = { workspace = true }
+anyhow = { workspace = true }
+chrono = { workspace = true }
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = true

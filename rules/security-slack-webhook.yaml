@@ -1,0 +1,23 @@
+id: SEC-007
+name: Slack Webhook URL
+type: security
+severity: high
+language: "*"
+analyzer: regex
+pattern: "(https://hooks\\.slack\\.com/services/T[a-zA-Z0-9_]+/B[a-zA-Z0-9_]+/[a-zA-Z0-9_]+)"
+message: "Slack incoming webhook URL detected"
+title: "Slack Webhook URL Exposed"
+description: "A Slack incoming webhook URL was found hardcoded. Anyone with this URL can post messages to your Slack channel."
+redact: true
+recommendations:
+  - "Revoke the webhook in your Slack workspace settings"
+  - "Generate a new webhook URL"
+  - "Store the URL as an environment variable"
+tags:
+  - slack
+  - webhook
+  - credentials
+conditions:
+  exclude_paths:
+    - "node_modules/"
+    - ".git/"

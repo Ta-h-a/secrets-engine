@@ -1,0 +1,24 @@
+id: PERF-001
+name: Synchronous File Operation (Node.js)
+type: performance
+severity: medium
+language: javascript
+analyzer: regex
+pattern: "fs\\.(readFileSync|writeFileSync|appendFileSync|existsSync|mkdirSync|readdirSync)"
+message: "Synchronous (blocking) file operation detected"
+title: "Blocking File I/O in Node.js"
+description: "Synchronous file operations block the Node.js event loop, degrading performance in servers and concurrent applications."
+redact: false
+recommendations:
+  - "Replace with the async equivalent: fs.readFile, fs.writeFile, fs.promises.*"
+  - "Use the fs/promises API with async/await for cleaner code"
+tags:
+  - performance
+  - nodejs
+  - blocking-io
+conditions:
+  exclude_paths:
+    - "node_modules/"
+    - ".git/"
+    - "scripts/"
+    - "tools/"

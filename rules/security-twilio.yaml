@@ -1,0 +1,22 @@
+id: SEC-008
+name: Twilio Account SID / Auth Token
+type: security
+severity: high
+language: "*"
+analyzer: regex
+pattern: "(AC[a-z0-9]{32}|SK[a-z0-9]{32})"
+message: "Twilio credential detected"
+title: "Twilio Credential Exposed"
+description: "A Twilio Account SID or API key was found hardcoded. This can be used to make calls, send SMS, and access your Twilio account."
+redact: true
+recommendations:
+  - "Revoke the credential in the Twilio console"
+  - "Use environment variables to pass credentials at runtime"
+tags:
+  - twilio
+  - sms
+  - credentials
+conditions:
+  exclude_paths:
+    - "node_modules/"
+    - ".git/"

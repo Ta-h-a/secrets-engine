@@ -1,0 +1,23 @@
+[package]
+name = "secretlens-http"
+version = "1.0.0"
+edition = "2021"
+description = "Axum HTTP server for SecretLens — /analyze, /resolve, /health, /forward-to-rotation"
+
+[dependencies]
+secretlens-core = { path = "../secretlens-core" }
+secretlens-rules = { path = "../secretlens-rules" }
+secretlens-pipeline = { path = "../secretlens-pipeline" }
+secretlens-ai = { path = "../secretlens-ai" }
+
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+axum = { workspace = true }
+reqwest = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+async-trait = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }

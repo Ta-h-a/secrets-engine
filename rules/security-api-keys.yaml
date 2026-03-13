@@ -1,0 +1,22 @@
+id: SEC-002
+name: Generic API Key
+type: security
+severity: high
+language: "*"
+analyzer: regex
+pattern: "(sk-[a-zA-Z0-9]{20,}|api[_-]?key\\s*[=:]\\s*['\"][^'\"]{10,}['\"])"
+message: "Hardcoded API key detected"
+title: "Generic API Key Exposed"
+description: "A generic API key pattern was found hardcoded in source code."
+redact: true
+recommendations:
+  - "Move the API key to an environment variable or secrets manager"
+  - "Rotate the exposed key in the service's dashboard"
+tags:
+  - api-key
+  - credentials
+conditions:
+  exclude_paths:
+    - "node_modules/"
+    - ".git/"
+    - "vendor/"

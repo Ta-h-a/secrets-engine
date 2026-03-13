@@ -1,0 +1,25 @@
+[package]
+name = "secretlens-analyzers"
+version = "1.0.0"
+edition = "2021"
+description = "Regex and AST analyzers for SecretLens — pure Rust, no subprocesses"
+
+[dependencies]
+secretlens-core = { path = "../secretlens-core" }
+serde_json = { workspace = true }
+regex = { workspace = true }
+rayon = { workspace = true }
+dashmap = { workspace = true }
+once_cell = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }
+
+# JS/TS AST — oxc ecosystem (fastest Rust JS parser)
+oxc_allocator = { workspace = true }
+oxc_parser = { workspace = true }
+oxc_ast = { workspace = true }
+oxc_span = { workspace = true }
+
+# Python AST
+rustpython-parser = "0.3"

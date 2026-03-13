@@ -1,0 +1,26 @@
+id: SEC-010
+name: GitHub Personal Access Token
+type: security
+severity: critical
+language: "*"
+analyzer: regex
+pattern: "(gh[pousr]_[A-Za-z0-9_]{36,255})"
+message: "GitHub personal access token detected"
+title: "GitHub Access Token Exposed"
+description: "A GitHub personal access token (PAT) was found hardcoded. This token can be used to read/write repositories, manage workflows, and access GitHub APIs on behalf of a user."
+redact: true
+recommendations:
+  - "Revoke the token immediately at github.com/settings/tokens"
+  - "Generate a new fine-grained token with only required scopes"
+  - "Use GitHub Actions secrets or a secrets manager for CI/CD"
+references:
+  - "https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens"
+tags:
+  - github
+  - credentials
+  - vcs
+conditions:
+  exclude_paths:
+    - "node_modules/"
+    - ".git/"
+    - "vendor/"

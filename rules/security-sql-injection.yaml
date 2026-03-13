@@ -1,0 +1,26 @@
+id: SEC-015
+name: SQL Injection via String Concatenation
+type: security
+severity: high
+language: "*"
+analyzer: regex
+pattern: "(?i)(SELECT|INSERT|UPDATE|DELETE)\\s+[\\w\\*]+.*\\s+WHERE\\s+.*[+&|]{1,2}\\s*"
+message: "Potential SQL injection via string concatenation"
+title: "SQL Injection Risk"
+description: "SQL query appears to be constructed via string concatenation. This is a classic SQL injection vector."
+redact: false
+recommendations:
+  - "Use parameterized queries or prepared statements"
+  - "Never concatenate user input directly into SQL strings"
+  - "Use an ORM if appropriate"
+references:
+  - "https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html"
+tags:
+  - sql-injection
+  - owasp
+  - security
+conditions:
+  exclude_paths:
+    - "node_modules/"
+    - ".git/"
+    - "migrations/"

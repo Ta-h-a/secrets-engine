@@ -1,0 +1,25 @@
+id: AST-JS-002
+name: Weak Cryptographic Algorithm (MD5/SHA1)
+type: security
+severity: high
+language: javascript
+analyzer: ast
+pattern: "crypto_weak:md5"
+message: "Weak cryptographic hash algorithm (MD5) detected"
+title: "Weak Crypto: MD5"
+description: "MD5 is a cryptographically broken hash function. It should not be used for security purposes (passwords, signatures, certificates)."
+redact: false
+recommendations:
+  - "Replace MD5 with SHA-256 or SHA-512 from Node.js crypto module"
+  - "For passwords, use bcrypt, scrypt, or argon2"
+  - "For data integrity, use SHA-256 at minimum"
+references:
+  - "https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html"
+tags:
+  - crypto
+  - javascript
+  - weak-algorithm
+conditions:
+  exclude_paths:
+    - "node_modules/"
+    - ".git/"

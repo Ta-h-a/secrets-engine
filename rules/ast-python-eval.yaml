@@ -1,0 +1,28 @@
+id: AST-PY-001
+name: Dangerous eval() in Python
+type: security
+severity: critical
+language: python
+analyzer: ast
+pattern: "call:eval"
+message: "Dangerous use of eval() detected — executes arbitrary Python code"
+title: "Python eval() Usage"
+description: "eval() executes arbitrary Python expressions from a string. If any part of the input is user-controlled, this is a critical remote code execution vulnerability."
+redact: false
+recommendations:
+  - "Replace eval() with ast.literal_eval() for safe evaluation of literals"
+  - "If you need dynamic code execution, consider a safer alternative (e.g. a restricted DSL)"
+  - "Validate and sanitize all inputs that reach eval()"
+references:
+  - "https://docs.python.org/3/library/functions.html#eval"
+  - "https://bandit.readthedocs.io/en/latest/blacklists/blacklist_calls.html#b307-eval"
+tags:
+  - python
+  - code-execution
+  - rce
+conditions:
+  exclude_paths:
+    - "test/"
+    - "tests/"
+    - "venv/"
+    - ".venv/"

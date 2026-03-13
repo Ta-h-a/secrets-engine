@@ -1,0 +1,26 @@
+id: AST-PY-002
+name: Dangerous exec() in Python
+type: security
+severity: critical
+language: python
+analyzer: ast
+pattern: "call:exec"
+message: "Dangerous use of exec() detected — executes arbitrary Python code"
+title: "Python exec() Usage"
+description: "exec() executes arbitrary Python statements from a string or code object. This is a remote code execution risk if any input is externally controlled."
+redact: false
+recommendations:
+  - "Remove exec() and redesign the logic without dynamic code execution"
+  - "If dynamic dispatch is needed, use a registry or plugin pattern instead"
+references:
+  - "https://bandit.readthedocs.io/en/latest/blacklists/blacklist_calls.html#b102-exec-used"
+tags:
+  - python
+  - code-execution
+  - rce
+conditions:
+  exclude_paths:
+    - "test/"
+    - "tests/"
+    - "venv/"
+    - ".venv/"

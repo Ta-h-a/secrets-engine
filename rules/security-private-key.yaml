@@ -1,0 +1,25 @@
+id: SEC-013
+name: PEM Private Key
+type: security
+severity: critical
+language: "*"
+analyzer: regex
+pattern: "-----BEGIN (RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----"
+message: "PEM private key detected"
+title: "Private Key Exposed"
+description: "A PEM-encoded private key was found in source code. Private keys must never be committed to version control."
+redact: true
+recommendations:
+  - "Remove the private key from the codebase immediately"
+  - "Revoke and reissue the key/certificate"
+  - "Store private keys in a dedicated key management service (KMS)"
+  - "Use .gitignore to prevent future commits of *.pem, *.key files"
+tags:
+  - private-key
+  - tls
+  - credentials
+  - critical
+conditions:
+  exclude_paths:
+    - "node_modules/"
+    - ".git/"

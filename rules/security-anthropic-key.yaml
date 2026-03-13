@@ -1,0 +1,23 @@
+id: SEC-012
+name: Anthropic API Key
+type: security
+severity: critical
+language: "*"
+analyzer: regex
+pattern: "(sk-ant-api03-[a-zA-Z0-9_\\-]{93}AA)"
+message: "Anthropic API key detected"
+title: "Anthropic (Claude) API Key Exposed"
+description: "An Anthropic API key was found hardcoded. This key grants access to Claude models and can incur significant costs."
+redact: true
+recommendations:
+  - "Revoke the key at console.anthropic.com/account/keys"
+  - "Generate a new key and store it in a secrets manager"
+tags:
+  - anthropic
+  - claude
+  - llm
+  - credentials
+conditions:
+  exclude_paths:
+    - "node_modules/"
+    - ".git/"

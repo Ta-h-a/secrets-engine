@@ -1,0 +1,22 @@
+id: SEC-009
+name: Cloudflare API Token
+type: security
+severity: high
+language: "*"
+analyzer: regex
+pattern: "([a-zA-Z0-9_-]{40})"
+message: "Potential Cloudflare API token detected"
+title: "Cloudflare API Token Exposed"
+description: "A string matching the Cloudflare API token format was found. Cloudflare tokens control DNS, firewall, and CDN settings."
+redact: true
+recommendations:
+  - "Revoke the token in the Cloudflare dashboard"
+  - "Create a scoped token with only required permissions"
+  - "Store the token in a secrets manager"
+tags:
+  - cloudflare
+  - credentials
+conditions:
+  exclude_paths:
+    - "node_modules/"
+    - ".git/"
