@@ -723,21 +723,43 @@ function App() {
 // ─── Derive secret type from finding metadata ─────────────────────────────
 
 function deriveSecretType(finding: Finding): string {
-  const text = (finding.title + ' ' + finding.type + ' ' + finding.ruleId).toLowerCase();
+  // Primary: map by ruleId — these are stable engine identifiers
+  const ruleMap: Record<string, string> = {
+    'SEC-001': 'aws',           // AWS Access Key Exposed
+    'SEC-002': 'api_key',       // Generic API Key Exposed
+    'SEC-003': 'google',        // Google API Key Exposed
+    'SEC-004': 'password',      // Hardcoded Password
+    'SEC-005': 'openai',        // OpenAI API Key Exposed
+    'SEC-006': 'stripe',        // Stripe API Key Exposed
+    'SEC-007': 'github',        // GitHub Token Exposed
+    'SEC-008': 'twilio',        // Twilio Credential Exposed
+    'SEC-009': 'slack',         // Slack Token Exposed (Cloudflare token also maps here)
+    'SEC-010': 'sendgrid',      // SendGrid API Key Exposed
+    'SEC-011': 'datadog',       // Datadog API Key Exposed
+    'SEC-012': 'jwt',           // JWT Secret Exposed
+    'SEC-013': 'private_key',   // Private Key Exposed
+  };
+  if (finding.ruleId && ruleMap[finding.ruleId]) {
+    return ruleMap[finding.ruleId];
+  }
 
-  if (/openai|gpt/.test(text)) return 'openai';
-  if (/aws/.test(text)) return 'aws';
-  if (/stripe/.test(text)) return 'stripe';
-  if (/github|gh_/.test(text)) return 'github';
-  if (/google/.test(text)) return 'google';
-  if (/slack/.test(text)) return 'slack';
-  if (/twilio/.test(text)) return 'twilio';
-  if (/sendgrid/.test(text)) return 'sendgrid';
-  if (/datadog/.test(text)) return 'datadog';
-  if (/jwt|token/.test(text)) return 'generic_token';
-  if (/password|passwd|pwd/.test(text)) return 'password';
-  if (/private.key|rsa|ssh/.test(text)) return 'private_key';
-  if (/api.key/.test(text)) return 'api_key';
+  // Fallback: keyword match on title (handles unknown ruleIds)
+  const title = (finding.title ?? '').toLowerCase();
+  if (/aws|amazon/.test(title))              return 'aws';
+  if (/openai|gpt/.test(title))             return 'openai';
+  if (/stripe/.test(title))                 return 'stripe';
+  if (/github|gh token/.test(title))        return 'github';
+  if (/google/.test(title))                 return 'google';
+  if (/slack/.test(title))                  return 'slack';
+  if (/twilio/.test(title))                 return 'twilio';
+  if (/sendgrid/.test(title))               return 'sendgrid';
+  if (/datadog/.test(title))                return 'datadog';
+  if (/cloudflare/.test(title))             return 'api_key';
+  if (/jwt|json web token/.test(title))     return 'jwt';
+  if (/private.?key|rsa|ssh/.test(title))  return 'private_key';
+  if (/password|passwd|pwd/.test(title))   return 'password';
+  if (/api.?key/.test(title))              return 'api_key';
+  if (/token/.test(title))                 return 'generic_token';
 
   return 'generic_secret';
 }
