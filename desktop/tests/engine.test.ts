@@ -113,7 +113,7 @@ describe('SecretLens Engine Integration Tests', () => {
   describe('API Key Detection', () => {
     it('should detect Stripe API key', async () => {
       const result = await runEngine([
-        { filePath: 'config.py', content: 'stripe_key = "sk_live_XXXXXXXXXXXXXXXXXXXX"' }
+        { filePath: 'config.py', content: 'stripe_key = "sk_live_' + '51MqLyABCD1234567890EFGH"' }
       ]);
 
       const response: AnalyzeResponse = JSON.parse(result);
@@ -158,7 +158,7 @@ describe('SecretLens Engine Integration Tests', () => {
     it('should detect secrets in multiple files', async () => {
       const result = await runEngine([
         { filePath: 'config.py', content: 'aws_key = "AKIAIOSFODNN7EXAMPLE"' },
-        { filePath: '.env', content: 'STRIPE_KEY="sk_live_XXXXXXXXXXXXXXXXXXXX"' },
+        { filePath: '.env', content: 'STRIPE_KEY="sk_live_' + '51MqLyABCD1234567890EFGH"' },
         { filePath: 'clean.py', content: 'print("hello")' }
       ]);
 
