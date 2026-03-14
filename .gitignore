@@ -18,3 +18,14 @@ Thumbs.db
 
 # Log files
 *.log
+
+# Desktop / Frontend
+node_modules/
+dist/
+out/
+.vite/
+.cache/
+.eslintcache
+package-lock.json.tmp
+coverage/
+*.local
