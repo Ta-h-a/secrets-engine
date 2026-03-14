@@ -31,7 +31,7 @@ function resolveGeminiKey(): string {
 function getModel(): GenerativeModel {
   const genAI = new GoogleGenerativeAI(resolveGeminiKey());
   return genAI.getGenerativeModel({
-    model: 'gemini-1.5-flash',
+    model: 'gemini-2.0-flash',
     generationConfig: {
       responseMimeType: 'application/json',
       temperature: 0.1,
