@@ -6,7 +6,9 @@ import { spawn } from 'child_process';
  */
 export function extractPdfText(filePath: string): Promise<string> {
   return new Promise((resolve, reject) => {
-    // Inline Python script — avoids writing a temp file
+    // Inline Python script — avoids writing a temp file.
+    // Use chr(34) for double-quote and chr(39) for single-quote to avoid
+    // backslash-escaping issues when the script is passed via -c.
     const script = [
       'import sys, pdfplumber',
       'pages = []',
@@ -16,8 +18,8 @@ export function extractPdfText(filePath: string): Promise<string> {
       '        if text and text.strip():',
       '            # Normalise unicode dashes / smart quotes',
       '            text = text.replace("\\u2014", "--").replace("\\u2013", "-")',
-      '            text = text.replace("\\u2018", "\\\'").replace("\\u2019", "\\\'")',
-      '            text = text.replace("\\u201c", "\\"").replace("\\u201d", "\\")',
+      '            text = text.replace("\\u2018", chr(39)).replace("\\u2019", chr(39))',
+      '            text = text.replace("\\u201c", chr(34)).replace("\\u201d", chr(34))',
       '            pages.append(f"=== PAGE {i+1} ===\\n{text}")',
       'print("\\n\\n".join(pages))',
     ].join('\n');
