@@ -7,6 +7,8 @@ import {
   AwsCredentials,
   AwsCredentialCheckResult,
   AwsCredentialSaveResult,
+  ComplianceRuleSummary,
+  ComplianceProgressEvent,
 } from '../shared/types';
 
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -58,5 +60,37 @@ contextBridge.exposeInMainWorld('electronAPI', {
   /** Listen for findings pushed from main process */
   onFindingsReceived: (callback: (findings: Finding[]) => void): void => {
     ipcRenderer.on('findings-received', (_event, findings) => callback(findings));
+  },
+
+  // ── Compliance ──────────────────────────────────────────────────────────────
+
+  /** Open native file-open dialog, returns selected PDF path or null */
+  pickPdf: (): Promise<string | null> =>
+    ipcRenderer.invoke('compliance:pick-pdf'),
+
+  /**
+   * Run the full PDF → multi-agent → YAML pipeline.
+   * Progress events are streamed via onComplianceProgress while this resolves.
+   */
+  processPdf: (
+    filePath: string,
+  ): Promise<{ success: boolean; rules?: ComplianceRuleSummary[]; error?: string }> =>
+    ipcRenderer.invoke('compliance:process-pdf', filePath),
+
+  /** Return the list of currently installed compliance YAML rules */
+  getComplianceRules: (): Promise<ComplianceRuleSummary[]> =>
+    ipcRenderer.invoke('compliance:get-rules'),
+
+  /** Delete all installed compliance rules, returns count removed */
+  deleteComplianceRules: (): Promise<{ count: number }> =>
+    ipcRenderer.invoke('compliance:delete-rules'),
+
+  /** Subscribe to compliance pipeline progress events */
+  onComplianceProgress: (callback: (event: ComplianceProgressEvent) => void): () => void => {
+    const listener = (_e: Electron.IpcRendererEvent, data: ComplianceProgressEvent) =>
+      callback(data);
+    ipcRenderer.on('compliance:progress', listener);
+    // Return an unsubscribe function so the component can clean up
+    return () => ipcRenderer.removeListener('compliance:progress', listener);
   },
 });

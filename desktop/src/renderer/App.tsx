@@ -9,6 +9,8 @@ import {
   AwsCredentials,
   AwsCredentialCheckResult,
   AwsCredentialSaveResult,
+  ComplianceRuleSummary,
+  ComplianceProgressEvent,
   SEVERITY_COLORS,
   SEVERITY_LABELS,
   detectLanguage,
@@ -18,6 +20,7 @@ import { ScriptModal } from './components/ScriptModal';
 import { AllResolvedScreen } from './components/AllResolvedScreen';
 import { PartialResolutionScreen } from './components/PartialResolutionScreen';
 import { AwsCredentialsModal } from './components/AwsCredentialsModal';
+import { ComplianceTab } from './components/ComplianceTab';
 
 // ─── ElectronAPI type declaration ────────────────────────────────────────────
 
@@ -34,6 +37,12 @@ declare global {
       saveAwsCredentials: (creds: AwsCredentials) => Promise<AwsCredentialSaveResult>;
       getRepoName: () => Promise<string>;
       onFindingsReceived: (callback: (findings: Finding[]) => void) => void;
+      // Compliance
+      pickPdf: () => Promise<string | null>;
+      processPdf: (filePath: string) => Promise<{ success: boolean; rules?: ComplianceRuleSummary[]; error?: string }>;
+      getComplianceRules: () => Promise<ComplianceRuleSummary[]>;
+      deleteComplianceRules: () => Promise<{ count: number }>;
+      onComplianceProgress: (callback: (event: ComplianceProgressEvent) => void) => () => void;
     };
   }
 }
@@ -146,6 +155,11 @@ const FindingRow: React.FC<FindingRowProps> = ({ finding, resolution, onResolve,
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
             <SeverityBadge severity={finding.severity} />
+            {finding.type === 'Compliance' && (
+              <span className="text-[9px] font-extrabold uppercase tracking-widest border border-purple-500 text-purple-600 px-2 py-0.5">
+                {finding.ruleId?.replace(/^COMP-/, '').replace(/-/g, '.') ?? 'Compliance'}
+              </span>
+            )}
             <span className="text-xs font-bold uppercase tracking-tight truncate">{finding.title}</span>
           </div>
           <p className="text-[11px] font-mono text-gray-400 uppercase">
@@ -257,6 +271,7 @@ function App() {
   const [screen, setScreen] = useState<AppScreen>('findings');
   const [stats, setStats] = useState<CommitStats | null>(null);
   const [ingesting, setIngesting] = useState<string | null>(null); // findingId currently fetching API
+  const [showCompliance, setShowCompliance] = useState(false);
 
   // AWS credentials state
   const [awsCredentialsValid, setAwsCredentialsValid] = useState(false);
@@ -556,6 +571,17 @@ function App() {
           <h1 className="text-lg font-black tracking-tighter uppercase">SecretLens</h1>
         </div>
         <div className="flex items-center gap-6">
+          {/* Compliance button */}
+          <button
+            onClick={() => setShowCompliance(true)}
+            className="flex items-center gap-1.5 text-[9px] font-extrabold uppercase tracking-widest text-gray-400 hover:text-white transition-colors"
+            title="Open Compliance Manager"
+          >
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="square" strokeLinejoin="miter" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Compliance
+          </button>
           {/* AWS credential indicator — only show the "required" prompt when not yet configured */}
           {!awsCredentialsValid && (
             <button
@@ -715,6 +741,11 @@ function App() {
           onCancel={handleAwsCredentialsCancelled}
           errorHint={awsModal.errorHint}
         />
+      )}
+
+      {/* Compliance tab overlay */}
+      {showCompliance && (
+        <ComplianceTab onClose={() => setShowCompliance(false)} />
       )}
     </div>
   );

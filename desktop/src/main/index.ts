@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
@@ -15,6 +15,11 @@ import {
   generateAwsReplacement,
   detectLanguage,
 } from '../shared/types';
+import {
+  processPdfAndGenerateRules,
+  getInstalledComplianceRules,
+  deleteComplianceRules,
+} from './compliance/ComplianceService';
 
 log.initialize();
 log.info('SecretLens Desktop starting...');
@@ -391,6 +396,47 @@ function setupIPC(): void {
     theme: 'light',
     autoBlock: true,
   }));
+
+  // ── Compliance ────────────────────────────────────────────────────────────
+
+  /** Open native file-open dialog filtered to PDF */
+  ipcMain.handle('compliance:pick-pdf', async () => {
+    const result = await dialog.showOpenDialog({
+      title: 'Select Compliance Document',
+      filters: [{ name: 'PDF Documents', extensions: ['pdf'] }],
+      properties: ['openFile'],
+    });
+    if (result.canceled || result.filePaths.length === 0) return null;
+    return result.filePaths[0];
+  });
+
+  /** Run the full PDF → agents → YAML pipeline, streaming progress events */
+  ipcMain.handle('compliance:process-pdf', async (event, filePath: string) => {
+    const sendProgress = (p: unknown) => {
+      event.sender.send('compliance:progress', p);
+    };
+    try {
+      const rules = await processPdfAndGenerateRules(filePath, sendProgress as never);
+      return { success: true, rules };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      log.error('Compliance pipeline error:', msg);
+      sendProgress({ step: 'error', message: msg, progress: 100 });
+      return { success: false, error: msg };
+    }
+  });
+
+  /** Return list of already-installed compliance rules */
+  ipcMain.handle('compliance:get-rules', async () => {
+    return getInstalledComplianceRules();
+  });
+
+  /** Remove all installed compliance rules */
+  ipcMain.handle('compliance:delete-rules', async () => {
+    const count = deleteComplianceRules();
+    log.info(`Deleted ${count} compliance rules`);
+    return { count };
+  });
 }
 
 // ─── AWS credential helpers ───────────────────────────────────────────────────

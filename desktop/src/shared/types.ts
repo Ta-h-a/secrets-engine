@@ -123,6 +123,36 @@ export interface AwsCredentialSaveResult {
   error?: string;
 }
 
+// ─── Compliance types (shared between main and renderer) ─────────────────────
+
+/** Summary of a single installed compliance YAML rule */
+export interface ComplianceRuleSummary {
+  ruleId: string;       // e.g. "COMP-A7-2"
+  controlId: string;    // e.g. "A.7.2"
+  name: string;
+  severity: string;
+  domain: string;       // domain tag (kebab-case)
+  pattern: string;      // regex pattern string
+  filePath: string;     // absolute path to the .yaml file on disk
+}
+
+/** Progress event streamed from main → renderer during PDF processing */
+export type ComplianceProgressStep =
+  | 'pdf-extract'
+  | 'ai-parse'
+  | 'ai-generate'
+  | 'validate'
+  | 'save'
+  | 'complete'
+  | 'error';
+
+export interface ComplianceProgressEvent {
+  step: ComplianceProgressStep;
+  message: string;
+  progress: number;     // 0–100
+  detail?: string;
+}
+
 export const SEVERITY_COLORS: Record<string, string> = {
   critical: '#FF0000',
   high: '#FF8A00',
