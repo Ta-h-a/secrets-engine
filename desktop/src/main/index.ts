@@ -417,6 +417,18 @@ function setupIPC(): void {
     };
     try {
       const rules = await processPdfAndGenerateRules(filePath, sendProgress as never);
+
+      // Re-run the engine so compliance findings appear immediately in the UI.
+      // Do this in the background — don't fail the PDF pipeline if the re-run errors.
+      try {
+        const newFindings = await rerunEngineOnStagedFiles();
+        pendingFindings = newFindings;
+        mainWindow?.webContents.send('findings-received', newFindings);
+        log.info(`Engine re-run complete: ${newFindings.length} findings (including compliance)`);
+      } catch (rerunErr) {
+        log.warn('Engine re-run after compliance pipeline failed:', rerunErr);
+      }
+
       return { success: true, rules };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -714,6 +726,89 @@ function extractAwsKeyNameFromOutput(output: string, scriptSource: string): stri
 
 function escapeSingleQuote(s: string): string {
   return s.replace(/'/g, "\\'");
+}
+
+// ─── Engine binary location ───────────────────────────────────────────────────
+
+function findEngineBinary(): string | null {
+  const candidates = [
+    path.join(os.homedir(), '.secretlens', 'bin', 'secretlens'),
+    path.join(__dirname, '..', '..', '..', 'target', 'release', 'secretlens'),
+    path.join(__dirname, '..', '..', '..', 'target', 'debug', 'secretlens'),
+  ];
+  for (const c of candidates) {
+    try {
+      fs.accessSync(c, fs.constants.X_OK);
+      return c;
+    } catch { /* try next */ }
+  }
+  return null;
+}
+
+// ─── Re-run engine against current staged files ───────────────────────────────
+//
+// Called after compliance rules are saved so the renderer immediately sees
+// compliance findings merged with the existing security findings.
+
+async function rerunEngineOnStagedFiles(): Promise<Finding[]> {
+  const engineBin = findEngineBinary();
+  if (!engineBin) throw new Error('Engine binary not found — cannot re-run after compliance install');
+
+  const gitRoot = repoPath || process.cwd();
+
+  // Get staged file paths
+  const gitResult = childProcess.spawnSync(
+    'git', ['diff', '--cached', '--name-only', '--diff-filter=ACM'],
+    { encoding: 'utf8', cwd: gitRoot },
+  );
+  if (gitResult.status !== 0) {
+    throw new Error(`git diff --cached failed: ${gitResult.stderr}`);
+  }
+
+  const stagedPaths = gitResult.stdout.trim().split('\n').filter(Boolean);
+  if (stagedPaths.length === 0) {
+    log.info('Engine re-run: no staged files — returning empty findings');
+    return [];
+  }
+
+  // Read staged file content
+  const files = stagedPaths.flatMap((relPath) => {
+    const absPath = path.isAbsolute(relPath) ? relPath : path.join(gitRoot, relPath);
+    try {
+      const content = fs.readFileSync(absPath, 'utf8');
+      return [{ filePath: relPath, content }];
+    } catch (e) {
+      log.warn(`Engine re-run: could not read ${absPath}:`, e);
+      return [];
+    }
+  });
+
+  const payload = JSON.stringify({
+    command: 'analyze',
+    payload: { files, aiProviderConfig: { provider: 'none' } },
+  });
+
+  log.info(`Engine re-run: scanning ${files.length} staged file(s) with binary: ${engineBin}`);
+
+  const result = childProcess.spawnSync(engineBin, ['--mode', 'pipe', '--format', 'json'], {
+    input: payload,
+    encoding: 'utf8',
+    timeout: 30_000,
+  });
+
+  if (result.error) throw new Error(`Engine spawn error: ${result.error.message}`);
+  if (!result.stdout?.trim()) throw new Error('Engine returned no output');
+
+  const response = JSON.parse(result.stdout) as {
+    status: string;
+    payload?: { findings?: Finding[]; errorMessage?: string };
+  };
+
+  if (response.status !== 'success') {
+    throw new Error(`Engine error: ${response.payload?.errorMessage ?? 'unknown'}`);
+  }
+
+  return response.payload?.findings ?? [];
 }
 
 // ─── CLI Argument Parsing ─────────────────────────────────────────────────────
