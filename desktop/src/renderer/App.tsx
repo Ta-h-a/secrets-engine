@@ -723,43 +723,50 @@ function App() {
 // ─── Derive secret type from finding metadata ─────────────────────────────
 
 function deriveSecretType(finding: Finding): string {
-  // Primary: map by ruleId — these are stable engine identifiers
+  // Primary: map by ruleId — derived from actual engine output
   const ruleMap: Record<string, string> = {
     'SEC-001': 'aws',           // AWS Access Key Exposed
     'SEC-002': 'api_key',       // Generic API Key Exposed
     'SEC-003': 'google',        // Google API Key Exposed
     'SEC-004': 'password',      // Hardcoded Password
-    'SEC-005': 'openai',        // OpenAI API Key Exposed
-    'SEC-006': 'stripe',        // Stripe API Key Exposed
+    'SEC-005': 'stripe',        // Stripe Live Secret Key Exposed
+    'SEC-006': 'stripe',        // Stripe API Key Exposed (alt rule)
     'SEC-007': 'github',        // GitHub Token Exposed
     'SEC-008': 'twilio',        // Twilio Credential Exposed
-    'SEC-009': 'slack',         // Slack Token Exposed (Cloudflare token also maps here)
+    'SEC-009': 'api_key',       // Cloudflare / generic token
     'SEC-010': 'sendgrid',      // SendGrid API Key Exposed
     'SEC-011': 'datadog',       // Datadog API Key Exposed
     'SEC-012': 'jwt',           // JWT Secret Exposed
     'SEC-013': 'private_key',   // Private Key Exposed
   };
   if (finding.ruleId && ruleMap[finding.ruleId]) {
+    // Title-aware override: SEC-009 can also be slack or openai depending on title
+    if (finding.ruleId === 'SEC-009') {
+      const t = (finding.title ?? '').toLowerCase();
+      if (/slack/.test(t))  return 'slack';
+      if (/openai|gpt/.test(t)) return 'openai';
+      if (/github/.test(t)) return 'github';
+    }
     return ruleMap[finding.ruleId];
   }
 
   // Fallback: keyword match on title (handles unknown ruleIds)
   const title = (finding.title ?? '').toLowerCase();
-  if (/aws|amazon/.test(title))              return 'aws';
-  if (/openai|gpt/.test(title))             return 'openai';
-  if (/stripe/.test(title))                 return 'stripe';
-  if (/github|gh token/.test(title))        return 'github';
-  if (/google/.test(title))                 return 'google';
-  if (/slack/.test(title))                  return 'slack';
-  if (/twilio/.test(title))                 return 'twilio';
-  if (/sendgrid/.test(title))               return 'sendgrid';
-  if (/datadog/.test(title))                return 'datadog';
-  if (/cloudflare/.test(title))             return 'api_key';
-  if (/jwt|json web token/.test(title))     return 'jwt';
-  if (/private.?key|rsa|ssh/.test(title))  return 'private_key';
-  if (/password|passwd|pwd/.test(title))   return 'password';
-  if (/api.?key/.test(title))              return 'api_key';
-  if (/token/.test(title))                 return 'generic_token';
+  if (/aws|amazon/.test(title))             return 'aws';
+  if (/openai|gpt/.test(title))            return 'openai';
+  if (/stripe/.test(title))                return 'stripe';
+  if (/github|gh token/.test(title))       return 'github';
+  if (/google/.test(title))                return 'google';
+  if (/slack/.test(title))                 return 'slack';
+  if (/twilio/.test(title))                return 'twilio';
+  if (/sendgrid/.test(title))              return 'sendgrid';
+  if (/datadog/.test(title))               return 'datadog';
+  if (/cloudflare/.test(title))            return 'api_key';
+  if (/jwt|json web token/.test(title))    return 'jwt';
+  if (/private.?key|rsa|ssh/.test(title)) return 'private_key';
+  if (/password|passwd|pwd/.test(title))  return 'password';
+  if (/api.?key/.test(title))             return 'api_key';
+  if (/token/.test(title))                return 'generic_token';
 
   return 'generic_secret';
 }
