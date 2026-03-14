@@ -43,6 +43,15 @@ declare global {
       getComplianceRules: () => Promise<ComplianceRuleSummary[]>;
       deleteComplianceRules: () => Promise<{ count: number }>;
       onComplianceProgress: (callback: (event: ComplianceProgressEvent) => void) => () => void;
+      resolveComplianceFinding: (args: {
+        filePath: string;
+        lineNumber: number;
+        ruleId: string;
+        title: string;
+        message: string;
+        description: string;
+        recommendations: string[];
+      }) => Promise<{ success: boolean; fixedLine?: string; explanation?: string; error?: string }>;
     };
   }
 }
@@ -198,6 +207,13 @@ const FindingRow: React.FC<FindingRowProps> = ({ finding, resolution, onResolve,
           <p className="text-[10px] text-gray-400 leading-relaxed">{resolution.skipReason}</p>
         </div>
       )}
+
+      {/* Compliance fix explanation — shown below the row when Gemini patches the line */}
+      {status === 'resolved' && finding.type === 'Compliance' && resolution?.awsKeyName && (
+        <div className="ml-5 pl-3 border-l-2 border-purple-300">
+          <p className="text-[10px] text-purple-500 leading-relaxed">{resolution.awsKeyName}</p>
+        </div>
+      )}
     </div>
   );
 };
@@ -324,6 +340,12 @@ function App() {
   const handleResolve = useCallback(async (finding: Finding) => {
     if (ingesting) return; // Already fetching
 
+    // Compliance findings are resolved by Gemini — no AWS credentials needed
+    if (finding.type === 'Compliance') {
+      await doResolve(finding);
+      return;
+    }
+
     // Gate: require valid AWS credentials before invoking the resolve flow
     if (!awsCredentialsValid) {
       setAwsModal({ pendingFinding: finding });
@@ -342,6 +364,41 @@ function App() {
     setIngesting(finding.id);
     setResolutionStatus(finding.id, { status: 'resolving' });
 
+    // ── Compliance findings: send code context to Gemini Agent 4 for a fix ──
+    if (finding.type === 'Compliance') {
+      try {
+        const result = await window.electronAPI.resolveComplianceFinding({
+          filePath: finding.filePath,
+          lineNumber: finding.lineNumber,
+          ruleId: finding.ruleId,
+          title: finding.title,
+          message: finding.message,
+          description: finding.description,
+          recommendations: finding.recommendations ?? [],
+        });
+
+        if (!result.success) {
+          setResolutionStatus(finding.id, {
+            status: 'failed',
+            errorMessage: result.error ?? 'Gemini could not fix this finding',
+          });
+        } else {
+          setResolutionStatus(finding.id, {
+            status: 'resolved',
+            // Re-use awsKeyName field to surface the explanation in the UI
+            awsKeyName: result.explanation,
+          });
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        setResolutionStatus(finding.id, { status: 'failed', errorMessage: msg });
+      } finally {
+        setIngesting(null);
+      }
+      return;
+    }
+
+    // ── Security findings: existing HTTP → AWS Secrets Manager flow ──────────
     try {
       // Extract the raw secret value from the file
       const extracted = await window.electronAPI.extractSecret(finding.filePath, finding.lineNumber);

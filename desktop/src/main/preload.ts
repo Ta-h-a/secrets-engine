@@ -9,6 +9,7 @@ import {
   AwsCredentialSaveResult,
   ComplianceRuleSummary,
   ComplianceProgressEvent,
+  ComplianceResolutionResult,
 } from '../shared/types';
 
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -93,4 +94,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // Return an unsubscribe function so the component can clean up
     return () => ipcRenderer.removeListener('compliance:progress', listener);
   },
+
+  /**
+   * Resolve a compliance finding using Gemini Agent 4.
+   * Sends the finding details + file context to Gemini, which returns a fixed
+   * line. The main process patches the file on disk and returns the explanation.
+   */
+  resolveComplianceFinding: (args: {
+    filePath: string;
+    lineNumber: number;
+    ruleId: string;
+    title: string;
+    message: string;
+    description: string;
+    recommendations: string[];
+  }): Promise<ComplianceResolutionResult> =>
+    ipcRenderer.invoke('compliance:resolve-finding', args),
 });

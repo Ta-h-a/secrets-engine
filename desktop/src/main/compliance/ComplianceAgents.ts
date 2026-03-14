@@ -212,6 +212,97 @@ async function generateRuleBatch(
   }));
 }
 
+// ─── Agent 4 — Resolve a compliance finding by fixing the offending line ──────
+
+export interface ComplianceResolution {
+  /** The replacement line (same indentation, preserving non-offending parts) */
+  fixedLine: string;
+  /** One-sentence explanation of what was changed and why */
+  explanation: string;
+}
+
+const RESOLVE_PROMPT = `You are a code compliance remediation agent for ISO/IEC 42001:2023.
+
+You will be given:
+1. A compliance finding (ruleId, title, message, description, recommendations)
+2. The full source file content with line numbers
+3. The specific line number that triggered the finding
+
+Your job:
+- Understand what the compliance control requires
+- Look at the offending line in its context (surrounding lines)
+- Produce a corrected replacement for ONLY the offending line that addresses the violation
+- Preserve indentation exactly
+- Keep any non-offending parts of the line intact
+- If the line has a TODO/FIXME comment, remove it and add a concrete implementation stub or a raise with a clear compliance message
+- If the line suppresses errors (bare except, type: ignore, noqa), add proper handling instead
+- If the line is already substantive code, add a compliance annotation comment instead of rewriting it
+
+Return a JSON object with exactly two fields:
+  "fixedLine"   – the replacement line text (no trailing newline, preserve leading whitespace)
+  "explanation" – one sentence explaining what was changed and which control it satisfies
+
+Return ONLY valid JSON — no markdown, no prose.
+
+Finding:
+`;
+
+export async function resolveComplianceFinding(
+  finding: {
+    ruleId: string;
+    title: string;
+    message: string;
+    description: string;
+    recommendations: string[];
+  },
+  fileContent: string,
+  lineNumber: number,
+): Promise<ComplianceResolution> {
+  const lines = fileContent.split('\n');
+  const zeroIdx = lineNumber - 1;
+
+  // Provide context: 5 lines before and after the offending line
+  const contextStart = Math.max(0, zeroIdx - 5);
+  const contextEnd = Math.min(lines.length - 1, zeroIdx + 5);
+  const contextLines = lines
+    .slice(contextStart, contextEnd + 1)
+    .map((l, i) => {
+      const lineNum = contextStart + i + 1;
+      const marker = lineNum === lineNumber ? '>>>' : '   ';
+      return `${marker} ${lineNum.toString().padStart(4)}: ${l}`;
+    })
+    .join('\n');
+
+  const offendingLine = lines[zeroIdx] ?? '';
+
+  const prompt =
+    RESOLVE_PROMPT +
+    JSON.stringify(finding, null, 2) +
+    `\n\nOffending line number: ${lineNumber}\nOffending line text: ${JSON.stringify(offendingLine)}\n\nFile context:\n${contextLines}`;
+
+  const model = getModel();
+  const result = await model.generateContent(prompt);
+  const raw = result.response.text();
+
+  let parsed: ComplianceResolution;
+  try {
+    parsed = JSON.parse(raw) as ComplianceResolution;
+  } catch {
+    // Strip possible markdown code fence
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (!match) {
+      throw new Error(`Agent 4 returned unparseable JSON: ${raw.slice(0, 200)}`);
+    }
+    parsed = JSON.parse(match[0]) as ComplianceResolution;
+  }
+
+  if (typeof parsed.fixedLine !== 'string' || typeof parsed.explanation !== 'string') {
+    throw new Error('Agent 4 response missing fixedLine or explanation fields');
+  }
+
+  return parsed;
+}
+
 // ─── Agent 3 — Validate and save rules (deterministic, no LLM) ───────────────
 
 export function validateAndSaveRules(

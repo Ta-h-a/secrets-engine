@@ -20,6 +20,7 @@ import {
   getInstalledComplianceRules,
   deleteComplianceRules,
 } from './compliance/ComplianceService';
+import { resolveComplianceFinding } from './compliance/ComplianceAgents';
 
 log.initialize();
 log.info('SecretLens Desktop starting...');
@@ -449,6 +450,62 @@ function setupIPC(): void {
     log.info(`Deleted ${count} compliance rules`);
     return { count };
   });
+
+  /**
+   * Resolve a compliance finding using Gemini Agent 4.
+   * Reads the offending file, asks Gemini to fix the specific line, writes the
+   * patched file back to disk, and returns the explanation to show in the UI.
+   */
+  ipcMain.handle(
+    'compliance:resolve-finding',
+    async (
+      _event,
+      args: {
+        filePath: string;
+        lineNumber: number;
+        ruleId: string;
+        title: string;
+        message: string;
+        description: string;
+        recommendations: string[];
+      },
+    ): Promise<{ success: boolean; explanation?: string; fixedLine?: string; error?: string }> => {
+      const { filePath, lineNumber, ruleId, title, message, description, recommendations } = args;
+
+      // Resolve the absolute path (filePath may be repo-relative)
+      const gitRoot = repoPath || process.cwd();
+      const absPath = path.isAbsolute(filePath) ? filePath : path.join(gitRoot, filePath);
+
+      let fileContent: string;
+      try {
+        fileContent = fs.readFileSync(absPath, 'utf8');
+      } catch (e) {
+        const msg = `Could not read file ${absPath}: ${e instanceof Error ? e.message : String(e)}`;
+        log.error('compliance:resolve-finding —', msg);
+        return { success: false, error: msg };
+      }
+
+      try {
+        const resolution = await resolveComplianceFinding(
+          { ruleId, title, message, description, recommendations },
+          fileContent,
+          lineNumber,
+        );
+
+        // Patch the file: replace the offending line with the fixed line
+        const lines = fileContent.split('\n');
+        lines[lineNumber - 1] = resolution.fixedLine;
+        fs.writeFileSync(absPath, lines.join('\n'), 'utf8');
+
+        log.info(`compliance:resolve-finding — patched ${filePath}:${lineNumber} for ${ruleId}`);
+        return { success: true, explanation: resolution.explanation, fixedLine: resolution.fixedLine };
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        log.error('compliance:resolve-finding — Gemini error:', msg);
+        return { success: false, error: msg };
+      }
+    },
+  );
 }
 
 // ─── AWS credential helpers ───────────────────────────────────────────────────

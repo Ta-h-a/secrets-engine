@@ -153,6 +153,16 @@ export interface ComplianceProgressEvent {
   detail?: string;
 }
 
+/** Result of the compliance:resolve-finding IPC call */
+export interface ComplianceResolutionResult {
+  success: boolean;
+  /** The replacement line that was written to disk */
+  fixedLine?: string;
+  /** Human-readable explanation of the change */
+  explanation?: string;
+  error?: string;
+}
+
 export const SEVERITY_COLORS: Record<string, string> = {
   critical: '#FF0000',
   high: '#FF8A00',
